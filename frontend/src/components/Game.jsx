@@ -7,6 +7,7 @@ import { addScore, gameOver, start } from '../Redux/gameReducer'
 import { fly, fall, birdReset } from '../Redux/birdReducer'
 import { generatePipe, pipeReset, pipeRun } from '../Redux/pipeReducer'
 
+
 let gameLoop
 let pipeGenerator
 
@@ -147,3 +148,5 @@ export default function Game() {
         </div>
     )
 }
+
+//nobug

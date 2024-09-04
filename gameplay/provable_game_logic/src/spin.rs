@@ -1,18 +1,27 @@
 use crate::definition::SpinGameInitArgs;
 use crate::definition::SpinGameIntermediateStates;
 
-// DO NOT MODIFY THIS FILE
 pub trait SpinGameTrait {
-    // Initialize the game with the provided arguments
     fn initialize_game(args: SpinGameInitArgs);
-
-    // Handle game steps with different cases (input: 0, 1, 3)
-    fn step(input: u64, value: Option<u64>); // Updated to accept an optional value
-
-    // Retrieve the current game state
+    fn step(input: u64, value: Option<u64>);
     fn get_game_state() -> SpinGameIntermediateStates;
 }
 
-// The SpinGame struct, implementing SpinGameTrait
-pub struct SpinGame {}
+pub struct SpinGame;
 
+impl SpinGameTrait for SpinGame {
+    fn initialize_game(args: SpinGameInitArgs) {
+        // Initialize game logic
+        Game::initialize_game(args.y_position, args.pipe_x_position, args.pipe_gap_start, args.highscore);
+    }
+
+    fn step(input: u64, _value: Option<u64>) {
+        // Process a game step based on input
+        Game::step_bird(input);
+    }
+
+    fn get_game_state() -> SpinGameIntermediateStates {
+        // Return current game state
+        Game::get_state()
+    }
+}

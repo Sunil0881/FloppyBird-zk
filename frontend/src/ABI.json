@@ -12,11 +12,11 @@
         },
         {
           "internalType": "uint64",
-          "name": "_gameHighscore",
+          "name": "_gameScore",
           "type": "uint64"
         }
       ],
-      "name": "DEV_ONLY_setGameHighscore",
+      "name": "DEV_ONLY_setGameScore",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -25,11 +25,29 @@
       "inputs": [
         {
           "internalType": "uint64",
-          "name": "_totalHighscore",
+          "name": "_globalHighScore",
           "type": "uint64"
         }
       ],
-      "name": "DEV_ONLY_setTotalHighscore",
+      "name": "DEV_ONLY_setGlobalHighScore",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "user",
+          "type": "address"
+        },
+        {
+          "internalType": "uint64",
+          "name": "_playerHighScore",
+          "type": "uint64"
+        }
+      ],
+      "name": "DEV_ONLY_setPlayerHighScore",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -133,7 +151,7 @@
           "type": "address"
         }
       ],
-      "name": "gameHighscores",
+      "name": "gameScores",
       "outputs": [
         {
           "internalType": "uint64",
@@ -145,20 +163,32 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        }
-      ],
-      "name": "getStates",
+      "inputs": [],
+      "name": "getAllScores",
       "outputs": [
         {
           "internalType": "uint64",
-          "name": "",
+          "name": "gameScore",
           "type": "uint64"
         },
+        {
+          "internalType": "uint64",
+          "name": "playerHighScore",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "globalHighScoreResult",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "globalHighScore",
+      "outputs": [
         {
           "internalType": "uint64",
           "name": "",
@@ -182,8 +212,14 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "totalHighscore",
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "playerHighScores",
       "outputs": [
         {
           "internalType": "uint64",
