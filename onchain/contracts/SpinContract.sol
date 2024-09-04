@@ -29,7 +29,7 @@ abstract contract SpinContract {
         uint256[] calldata verify_instance,
         uint256[] calldata aux,
         uint256[][] calldata instances
-    ) internal {
+    ) external {
         // skip image commitments verification if it is not set
         if (zk_image_commitments[0] != 0) {
             require(verify_instance[1] == zk_image_commitments[0], "Invalid image commitment 0");
@@ -40,6 +40,7 @@ abstract contract SpinContract {
         IZKVerifier(verifier).verify(proof, verify_instance, aux, instances);
 
         emit VerificationSucceeded(msg.sender);
+        settle(instances);
     }
 
     function owner() external view returns (address) {
@@ -59,4 +60,6 @@ abstract contract SpinContract {
         zk_image_commitments[1] = commitments[1];
         zk_image_commitments[2] = commitments[2];
     }
+
+    function settle(uint256[][] calldata instances) internal virtual;
 }

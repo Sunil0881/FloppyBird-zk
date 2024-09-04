@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
 import "./SpinContract.sol";
@@ -9,63 +9,56 @@ contract GameContract is SpinContract {
 
     /* Application On-chain Business Logic */
 
-    // Here we use a simple example where the player can move a cursor in a 1-D space and
-    // keep track of the total steps.
+    // Map the user's address to their game highscore and total highscore
+    mapping(address => uint64) public gameHighscores;
+    uint64 public totalHighscore;  // Global total highscore stored on-chain
 
-    uint64 public total_steps;
-    uint64 public current_position;
-
-    event UpdateState(
-        uint64 previous_total_steps, uint64 previous_position, uint64 total_steps, uint64 current_position
-    );
-
-    // Get the current state of the game contract
-    function getStates() external view returns (uint64, uint64) {
-        return (total_steps, current_position);
+    // Get the current state of both game and total highscore for the user
+    function getStates(address user) external view returns (uint64, uint64) {
+        return (gameHighscores[user], totalHighscore);
     }
 
     struct ZKInput {
-        uint64 start_total_steps;
-        uint64 start_position;
+        uint64 start_gameHighscore;
     }
 
     struct ZKOutput {
-        uint64 end_total_steps;
-        uint64 end_position;
+        uint64 end_gameHighscore;
+        uint64 end_totalHighscore;
     }
 
-    function submitGame(
-        uint256[] calldata proof,
-        uint256[] calldata verify_instance,
-        uint256[] calldata aux,
-        uint256[][] calldata instances
-    ) public {
-        settleProof(proof, verify_instance, aux, instances);
+    // Settle a verified proof  
+    function settle(address user, uint256[][] calldata instances) internal override {
+        ZKInput memory zk_input = ZKInput(
+            uint64(instances[0][0])  // start_gameHighscore
+        );
 
-        settle(instances);
-    }
-
-    // Settle a verified proof
-    function settle(uint256[][] calldata instances) internal {
-        ZKInput memory zk_input = ZKInput(uint64(instances[0][0]), uint64(instances[0][1]));
-
-        ZKOutput memory zk_output = ZKOutput(uint64(instances[0][2]), uint64(instances[0][3]));
+        ZKOutput memory zk_output = ZKOutput(
+            uint64(instances[0][1]),  // end_gameHighscore
+            uint64(instances[0][2])   // end_totalHighscore
+        );
 
         require(
-            zk_input.start_total_steps == total_steps && zk_input.start_position == current_position,
-            "Invalid start state"
+            zk_input.start_gameHighscore == gameHighscores[user],
+            "Invalid game highscore start state"
         );
 
-        total_steps = zk_output.end_total_steps;
-        current_position = zk_output.end_position;
+        // Update the user's game highscore
+        gameHighscores[user] = zk_output.end_gameHighscore;
 
-        emit UpdateState(
-            zk_input.start_total_steps, zk_input.start_position, zk_output.end_total_steps, zk_output.end_position
-        );
+        // Update the global total highscore if the user's new highscore is higher
+        if (zk_output.end_totalHighscore > totalHighscore) {
+            totalHighscore = zk_output.end_totalHighscore;
+        }
     }
 
-    function DEV_ONLY_setStates(uint64 _total_steps, uint64 _current_position) external onlyOwner {
-        total_steps = _total_steps;
-        current_position = _current_position;
+    // Developer-only function to manually set the game highscore for a user.
+    function DEV_ONLY_setGameHighscore(address user, uint64 _gameHighscore) external onlyOwner {
+        gameHighscores[user] = _gameHighscore;
+    }
+
+    // Developer-only function to manually set the total highscore globally.
+    function DEV_ONLY_setTotalHighscore(uint64 _totalHighscore) external onlyOwner {
+        totalHighscore = _totalHighscore;
     }
 }
