@@ -90,10 +90,7 @@ if(!isConnected){
             const highscore = result[2];
             const player_highscore = result[3];
 
-            console.log("x_position = ", x_position);
-            console.log("y_position = ", y_position);
-            console.log("highscore = ", highscore);
-            console.log("playerHighScore = ", player_highscore);
+           
             setOnChainGameStates({
                 x_position,
                 y_position,
@@ -110,7 +107,7 @@ if(!isConnected){
                 },  
             });
 
-            console.log("before jdcfsd",spin);
+           
             
             spin.initialize_import().then(() => {
                 const arg = new SpinGameInitArgs( x_position,
@@ -132,7 +129,7 @@ if(!isConnected){
         player_highscore: BigInt(0)
     });
 
-    console.log("game",gameState);
+   
     
 
     const [onChainGameStates, setOnChainGameStates] = useState<GameState>({
@@ -240,6 +237,9 @@ console.log("error in verify onchain function", error);
     const handleClick = (e) => {
         if (game.status === 'PLAYING') {
             dispatch(fly())
+            const commandValue = BigInt(0);
+            onClick(commandValue);
+
         }
     }
 
@@ -274,6 +274,8 @@ console.log("error in verify onchain function", error);
 
             if (bird.y > 512 - 108) {
               dispatch(gameOver())
+              const commandValuee = BigInt(0);
+              onClick(commandValuee);
               submitProof();
               dispatch(birdReset())
               dispatch(pipeReset())
@@ -288,6 +290,8 @@ console.log("error in verify onchain function", error);
               ) {
                 hitRef.current.play()
                 dispatch(gameOver())
+                const commandValuee = BigInt(0);
+                onClick(commandValuee);
                 submitProof();
                 dispatch(birdReset())
                 dispatch(pipeReset())
