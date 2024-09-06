@@ -1,20 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react'
-import Bird from './Bird'
-import ForeGround from './ForeGround'
-import Pipe from './Pipe'
-import { useDispatch, useSelector } from 'react-redux'
-import { addScore, gameOver, start } from '../Redux/gameReducer'
-import { fly, fall, birdReset } from '../Redux/birdReducer'
-import { generatePipe, pipeReset, pipeRun } from '../Redux/pipeReducer'
-
+import React, { useEffect, useRef, useState } from 'react';
+import Bird from './Bird';
+import ForeGround from './ForeGround';
+import Pipe from './Pipe';
+import { useDispatch, useSelector } from 'react-redux';
+import { addScore, gameOver, start } from '../Redux/gameReducer';
+import { fly, fall, birdReset } from '../Redux/birdReducer';
+import { generatePipe, pipeReset, pipeRun } from '../Redux/pipeReducer';
 import { waitForTransactionReceipt, writeContract } from "@wagmi/core";
 import { abi } from "../ABI.json";
 import { config } from "../web3";
 import { readContract } from "wagmi/actions";
-import { TaskStatus } from "zkwasm-service-helper";
 import { Spin, SpinGameInitArgs } from "spin";
 import { useAccount } from 'wagmi';
-
 
 const GAME_CONTRACT_ADDRESS = import.meta.env.VITE_GAME_CONTRACT_ADDRESS;
 const ZK_USER_ADDRESS = import.meta.env.VITE_ZK_CLOUD_USER_ADDRESS;
@@ -49,8 +46,6 @@ async function verify_onchain({
     console.log("verify_instance", verify_instance);
     console.log("aux",aux);
 
-    console.log("instance val passed", [instances]);
-    
     const result = await writeContract(config, {
         abi,
         address: GAME_CONTRACT_ADDRESS,
@@ -74,28 +69,75 @@ async function getOnchainGameStates() {
     return result;
 }
 
-
 export default function Game() {
+    const {isConnected} = useAccount();
+    const [highScore, setHighScore] = useState(0);  // Local state for highscore
+    const [gameState, setGameState] = useState<GameState>({
+        x_position: BigInt(0),
+        y_position: BigInt(0),
+        highscore: BigInt(0),
+        player_highscore: BigInt(0)
+    });
 
-    const {isConnected} = useAccount()
+    const [onChainGameStates, setOnChainGameStates] = useState<GameState>({
+        x_position: BigInt(0),
+        y_position: BigInt(0),
+        highscore: BigInt(0),
+        player_highscore: BigInt(0),
+    });
+
+    const [moves, setMoves] = useState<bigint[]>([]);
+    
+    const dispatch = useDispatch();
+    const { game } = useSelector((state: any) => state.game);
+    const { bird } = useSelector((state: any) => state.bird);
+    const { pipes, startPosition } = useSelector((state: any) => state.pipe);
+    const wingRef = useRef(null);
+    const hitRef = useRef(null);
+    const pointRef = useRef(null);
+
+    // Function to fetch and update high score from the blockchain
+    const fetchHighScoreFromBlockchain = async () => {
+        const result = await getOnchainGameStates();
+        const blockchainHighScore = Number(result[2]);  // Blockchain highscore
+
+        // Check if blockchain high score is higher than the local one and update
+        if (blockchainHighScore > highScore) {
+            setHighScore(blockchainHighScore);
+            localStorage.setItem('highScore', blockchainHighScore.toString());
+        }
+    };
+
     useEffect(() => {
-if(!isConnected){
-  console.log("not connected");
-  
-  return
-}
-        getOnchainGameStates().then(async (result): Promise<any> => {
+        if (!isConnected) {
+            console.log("not connected");
+            return;
+        }
+
+        // Fetch the highscore from localStorage if it exists
+        const localHighScore = localStorage.getItem('highScore');
+        if (localHighScore) {
+            setHighScore(Number(localHighScore));  // Load from localStorage
+        }
+
+        // Fetch initial game states and setup spin
+        getOnchainGameStates().then(async (result) => {
             const x_position = result[0];
             const y_position = result[1];
             const highscore = result[2];
             const player_highscore = result[3];
 
-           
+            // Update local high score and localStorage if higher
+            if (Number(highscore) > highScore) {
+                setHighScore(Number(highscore));
+                localStorage.setItem('highScore', highscore.toString());
+            }
+
             setOnChainGameStates({
                 x_position,
                 y_position,
                 highscore,
-                player_highscore
+                player_highscore,
             });
 
             spin = new Spin({
@@ -107,215 +149,165 @@ if(!isConnected){
                 },  
             });
 
-           
-            
             spin.initialize_import().then(() => {
-                const arg = new SpinGameInitArgs( x_position,
+                const arg = new SpinGameInitArgs(
+                    x_position,
                     y_position,
                     highscore,
-                    player_highscore);
-                console.log("arg = ", arg);
+                    player_highscore
+                );
                 spin.initialize_game(arg);
                 updateDisplay();
             });
         });
-    }, []);
 
+        // Poll the blockchain for high score updates every 30 seconds
+        const intervalId = setInterval(() => {
+            fetchHighScoreFromBlockchain();
+        }, 30000);  // 30 seconds interval
 
-    const [gameState, setGameState] = useState<GameState>({
-        x_position: BigInt(0),
-        y_position: BigInt(0),
-        highscore: BigInt(0),
-        player_highscore: BigInt(0)
-    });
+        return () => clearInterval(intervalId);  // Cleanup interval on component unmount
+    }, [isConnected]);
 
-   
-    
+    const onClick = (command: bigint) => () => {
+        spin.step(command);
+        updateDisplay();
+    };
 
-    const [onChainGameStates, setOnChainGameStates] = useState<GameState>({
-        x_position: BigInt(0),
-        y_position: BigInt(0),
-        highscore: BigInt(0),
-        player_highscore: BigInt(0),
+    const updateDisplay = () => {
+        const newGameState = spin.getGameState();
+        setGameState({
+            x_position: newGameState.x_position,
+            y_position: newGameState.y_position,
+            highscore: newGameState.highscore,
+            player_highscore: newGameState.player_highscore,
+        });
+        setMoves(spin.witness);
+    };
 
-    });
+    const submitProof = async () => {
+        const proof = await spin.generateProof();
 
-    console.log("onchainStates", onChainGameStates);
-    
+        if (!proof) {
+            console.error("Proof generation failed");
+            return;
+        }
 
-    const [moves, setMoves] = useState<bigint[]>([]);
-console.log("moves",moves);
+        try {
+            await verify_onchain(proof);
+        } catch (error) {
+            console.log("error in verify onchain function", error);
+        }
 
+        // Fetch latest states after proof submission
+        const gameStates = await getOnchainGameStates();
+        setOnChainGameStates({
+            x_position: gameStates[0],
+            y_position: gameStates[1],
+            highscore: gameStates[2],
+            player_highscore: gameStates[3]
+        });
 
-const onClick = (command: bigint) => () => {
-    spin.step(command);
-    updateDisplay();
-};
+        await spin.reset();
+    };
 
-const updateDisplay = () => {
-    const newGameState = spin.getGameState();
-    setGameState({
-        x_position: newGameState.x_position,
-        y_position: newGameState.y_position,
-        highscore: newGameState.highscore,
-        player_highscore: newGameState.player_highscore,
-    });
-    setMoves(spin.witness);
-};
-
-
-const submitProof = async () => {
-    console.log("valleded");
-    
-    const proof = await spin.generateProof();
-console.log("proof",proof);
-
-    if (!proof) {
-        console.error("Proof generation failed");
-        return;
-    }
-    // onchain verification operations
-    console.log("submitting proof");
-try {
-const verificationResult = await verify_onchain(proof);
-
-console.log("verificationResult = ", verificationResult);
-} catch (error) {
-console.log("error in verify onchain function", error);
-
-}
-
-    // wait for the transaction to be broadcasted, better way is to use event listener
-    await new Promise((r) => setTimeout(r, 1000));
-
-    const gameStates = await getOnchainGameStates();
-
-    setOnChainGameStates({
-        x_position: gameStates[0],
-        y_position: gameStates[1],
-        highscore: gameStates[2],
-        player_highscore: gameStates[3]
-    });
-
-    await spin.reset();
-    
-};
-
-
-
-    
-    const dispatch = useDispatch()
-    const { game } = useSelector((state: any) => state.game);
-    const { bird } = useSelector((state: any) => state.bird);
-    const { pipes, startPosition } = useSelector((state: any) => state.pipe);
-    const wingRef = useRef(null)
-    const hitRef = useRef(null)
-    const pointRef = useRef(null)
-
-   
-    const [highScore, setHighScore] = useState(0)
-
- 
     function startGameLoop() {
         gameLoop = setInterval(() => {
-            dispatch(fall())
-            dispatch(pipeRun())
-        }, 150)
+            dispatch(fall());
+            dispatch(pipeRun());
+        }, 150);
         
         pipeGenerator = setInterval(() => {
-            dispatch(generatePipe()) 
-            dispatch(addScore())
-            pointRef.current.play()
-        }, 3000)
+            dispatch(generatePipe());
+            dispatch(addScore());
+            pointRef.current.play();
+        }, 3000);
     }
 
     function stopGameLoop() {
-        clearInterval(gameLoop)
-        clearInterval(pipeGenerator)
+        clearInterval(gameLoop);
+        clearInterval(pipeGenerator);
     }
 
-    const handleClick = (e) => {
+    const handleClick = () => {
         if (game.status === 'PLAYING') {
-            dispatch(fly())
+            dispatch(fly());
             const commandValue = BigInt(0);
             onClick(commandValue);
-
         }
-    }
+    };
 
     const newGameHandler = () => {
-        startGameLoop()
-        dispatch(start())
-    }
+        startGameLoop();
+        dispatch(start());
+    };
 
     useEffect(() => {
         if (game.status === 'GAME_OVER') {
-            stopGameLoop()
+            stopGameLoop();
 
-            // If the player beats the high score, send the new score to the server
+            // If the player beats the high score, update both locally and on-chain
             if (game.score > highScore) {
-             
-                    setHighScore(highScore) // Update the displayed high score
-               
+                setHighScore(game.score); // Update the displayed high score
+                localStorage.setItem('highScore', game.score.toString()); // Store new high score in localStorage
+                submitProof();  // Submit proof to update on-chain
             }
         } else {
-            const x = startPosition.x
+            const x = startPosition.x;
 
             const challenge = pipes
-              .map(({height}, i) => {
-                return {
+              .map(({ height }, i) => ({
                   x1: x + i * 200,
                   y1: height,
                   x2: x + i * 200,
                   y2: height + 100,
-                }
-              })
-              .filter(({x1}) => x1 > 0 && x1 < 288)
+              }))
+              .filter(({ x1 }) => x1 > 0 && x1 < 288);
 
             if (bird.y > 512 - 108) {
-              dispatch(gameOver())
-              const commandValuee = BigInt(0);
-              onClick(commandValuee);
-              submitProof();
-              dispatch(birdReset())
-              dispatch(pipeReset())
-              hitRef.current.play()
+                dispatch(gameOver());
+                onClick(BigInt(0));
+                submitProof();
+                dispatch(birdReset());
+                dispatch(pipeReset());
+                hitRef.current.play();
             }
           
             if (challenge.length) {
-              const {x1, y1, x2, y2} = challenge[0]
+              const { x1, y1, x2, y2 } = challenge[0];
               if (
                 (x1 < 150 && 150 < x1 + 52 && bird.y < y1) ||
                 (x2 < 150 && 150 < x2 + 52 && bird.y > y2)
               ) {
-                hitRef.current.play()
-                dispatch(gameOver())
-                const commandValuee = BigInt(0);
-                onClick(commandValuee);
+                hitRef.current.play();
+                dispatch(gameOver());
+                onClick(BigInt(0));
                 submitProof();
-                dispatch(birdReset())
-                dispatch(pipeReset())
+                dispatch(birdReset());
+                dispatch(pipeReset());
               }
             }
         }
-    }, [startPosition.x])
+    }, [startPosition.x]);
 
     return (
         <div className='game-div' onClick={handleClick}>
             <audio ref={hitRef} src="./hit.mp3"></audio>
             <audio ref={pointRef} src="./point.mp3"></audio>
-            <h2 style={{position: 'absolute', top: 4, left: 70}}>High Score: {highScore}</h2> {/* Display high score */}
+            <h2 style={{ position: 'absolute', top: 4, left: 70 }}>
+                High Score: {highScore}
+            </h2> {/* Display high score */}
             {game.status === 'NEW_GAME' && (
-              <>
-                <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
-                <Bird />
-              </>
+                <>
+                    <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
+                    <Bird />
+                </>
             )}
             {game.status === 'GAME_OVER' && (
                 <>
                     <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
-                    <h2 style={{position: 'absolute', top: 100, left: 80}}>Game Over</h2>  
-                    <h2 style={{position: 'absolute', top: 150, left: 140}}>{game.score}</h2>  
+                    <h2 style={{ position: 'absolute', top: 100, left: 80 }}>Game Over</h2>  
+                    <h2 style={{ position: 'absolute', top: 150, left: 140 }}>{game.score}</h2>  
                 </>
             )}
             {game.status === 'PLAYING' && (
@@ -324,11 +316,9 @@ console.log("error in verify onchain function", error);
                     <Bird />
                     <Pipe />
                     <ForeGround />
-                    <h2 style={{position: 'absolute', top: 50, left: 150}}>{game.score}</h2>  
+                    <h2 style={{ position: 'absolute', top: 50, left: 150 }}>{game.score}</h2>  
                 </>
             )}
         </div>
-    )
+    );
 }
-
-//nobug
