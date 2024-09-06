@@ -201,7 +201,7 @@ console.log("error in verify onchain function", error);
     });
 
     await spin.reset();
-    // awonGameInitReady(gameStates[0], gameStates[1]);
+    
 };
 
 
@@ -215,11 +215,10 @@ console.log("error in verify onchain function", error);
     const hitRef = useRef(null)
     const pointRef = useRef(null)
 
-    // State to store the high score fetched from the backend
+   
     const [highScore, setHighScore] = useState(0)
 
-    
-
+ 
     function startGameLoop() {
         gameLoop = setInterval(() => {
             dispatch(fall())
@@ -255,18 +254,9 @@ console.log("error in verify onchain function", error);
 
             // If the player beats the high score, send the new score to the server
             if (game.score > highScore) {
-                fetch('http://localhost:5000/highscore', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ score: game.score })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    setHighScore(data.highScore) // Update the displayed high score
-                })
-                .catch(error => console.error('Error updating high score:', error))
+             
+                    setHighScore(highScore) // Update the displayed high score
+               
             }
         } else {
             const x = startPosition.x
@@ -298,6 +288,7 @@ console.log("error in verify onchain function", error);
               ) {
                 hitRef.current.play()
                 dispatch(gameOver())
+                submitProof();
                 dispatch(birdReset())
                 dispatch(pipeReset())
               }
