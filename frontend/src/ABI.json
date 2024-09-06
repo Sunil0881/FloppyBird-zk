@@ -6,48 +6,27 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
+          "internalType": "uint64",
+          "name": "_bird_y_position",
+          "type": "uint64"
         },
         {
           "internalType": "uint64",
-          "name": "_gameScore",
+          "name": "_pipe_x_position",
           "type": "uint64"
-        }
-      ],
-      "name": "DEV_ONLY_setGameScore",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint64",
-          "name": "_globalHighScore",
-          "type": "uint64"
-        }
-      ],
-      "name": "DEV_ONLY_setGlobalHighScore",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
         },
         {
           "internalType": "uint64",
-          "name": "_playerHighScore",
+          "name": "_highscore",
           "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_playerHighscore",
+          "type": "uint256"
         }
       ],
-      "name": "DEV_ONLY_setPlayerHighScore",
+      "name": "DEV_ONLY_setStates",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -144,14 +123,8 @@
       "type": "event"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "gameScores",
+      "inputs": [],
+      "name": "bird_y_position",
       "outputs": [
         {
           "internalType": "uint64",
@@ -164,22 +137,27 @@
     },
     {
       "inputs": [],
-      "name": "getAllScores",
+      "name": "getStates",
       "outputs": [
         {
           "internalType": "uint64",
-          "name": "gameScore",
+          "name": "",
           "type": "uint64"
         },
         {
           "internalType": "uint64",
-          "name": "playerHighScore",
+          "name": "",
           "type": "uint64"
         },
         {
           "internalType": "uint64",
-          "name": "globalHighScoreResult",
+          "name": "",
           "type": "uint64"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -187,7 +165,7 @@
     },
     {
       "inputs": [],
-      "name": "globalHighScore",
+      "name": "highscore",
       "outputs": [
         {
           "internalType": "uint64",
@@ -212,6 +190,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "pipe_x_position",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -219,12 +210,12 @@
           "type": "address"
         }
       ],
-      "name": "playerHighScores",
+      "name": "playerHighScore",
       "outputs": [
         {
-          "internalType": "uint64",
+          "internalType": "uint256",
           "name": "",
-          "type": "uint64"
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",

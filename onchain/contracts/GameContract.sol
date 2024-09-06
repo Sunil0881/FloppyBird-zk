@@ -8,93 +8,65 @@ contract GameContract is SpinContract {
     constructor(address verifier_address) SpinContract(verifier_address) {}
 
     /* Application On-chain Business Logic */
+    uint64 public bird_y_position;
+    uint64 public pipe_x_position;
+    uint64 public highscore;
+    mapping (address => uint) public playerHighScore;
 
-    // Mapping to store the current game score and high score for each user
-    mapping(address => uint64) public gameScores;        // Maps user's address to their current game score
-    mapping(address => uint64) public playerHighScores;  // Maps user's address to their highest score
-
-    // Global high score across all players
-    uint64 public globalHighScore;
-
-    // Get the current state of both game and player high score for the caller (msg.sender) along with the global high score
-    function getAllScores() external view returns (uint64 gameScore, uint64 playerHighScore, uint64 globalHighScoreResult) {
-        return (
-            gameScores[msg.sender],         // The caller's current game score
-            playerHighScores[msg.sender],   // The caller's high score
-            globalHighScore                 // The global high score across all players
-        );
+    // Get the current state of the game contract
+    function getStates() external view returns (uint64, uint64, uint64, uint) {
+        uint playerScore = playerHighScore[msg.sender];
+        return (bird_y_position, pipe_x_position, highscore, playerScore);
     }
 
     struct ZKInput {
-        uint64 start_gameScore;
-        uint64 start_playerHighScore;
-        uint64 start_globalHighScore;
+        uint64 start_bird_y_position;
+        uint64 start_pipe_x_position;
+        uint64 start_highscore;
+        uint start_playerHighScore;
     }
 
     struct ZKOutput {
-        uint64 end_gameScore;
-        uint64 end_playerHighScore;
-        uint64 end_globalHighScore;
+        uint64 end_bird_y_position;
+        uint64 end_pipe_x_position;
+        uint64 end_highscore;
+        uint end_playerHighScore;
     }
 
-    // Override the settle function from SpinContract
+    // Settle a verified proof
     function settle(uint256[][] calldata instances) internal override {
-        address user = msg.sender;
-
         ZKInput memory zk_input = ZKInput(
-            uint64(instances[0][0]),  // start_gameScore
-            uint64(instances[0][1]),  // start_playerHighScore
-            uint64(instances[0][2])   // start_globalHighScore
+            uint64(instances[0][0]), 
+            uint64(instances[0][1]), 
+            uint64(instances[0][2]), 
+            uint(instances[0][3])
         );
 
         ZKOutput memory zk_output = ZKOutput(
-            uint64(instances[0][3]),  // end_gameScore
-            uint64(instances[0][4]),  // end_playerHighScore
-            uint64(instances[0][5])   // end_globalHighScore
+            uint64(instances[0][4]), 
+            uint64(instances[0][5]), 
+            uint64(instances[0][6]), 
+            uint(instances[0][7])
         );
 
-        // Validate that the current game score matches the user's stored game score
         require(
-            zk_input.start_gameScore == gameScores[user],
-            "Invalid game score start state"
-        );
-        // Validate that the player's high score matches the stored player high score
-        require(
-            zk_input.start_playerHighScore == playerHighScores[user],
-            "Invalid player highscore start state"
-        );
-        // Validate that the global high score matches the current stored global high score
-        require(
-            zk_input.start_globalHighScore == globalHighScore,
-            "Invalid global highscore start state"
+            zk_input.start_bird_y_position == bird_y_position &&
+            zk_input.start_pipe_x_position == pipe_x_position &&
+            zk_input.start_highscore == highscore &&
+            zk_input.start_playerHighScore == playerHighScore[msg.sender],
+            "Invalid start state"
         );
 
-        // Update the user's game score
-        gameScores[user] = zk_output.end_gameScore;
-
-        // Update the player's high score if they beat their previous high score
-        if (zk_output.end_playerHighScore > playerHighScores[user]) {
-            playerHighScores[user] = zk_output.end_playerHighScore;
-        }
-
-        // Update the global high score if the player's new high score beats the global high score
-        if (zk_output.end_globalHighScore > globalHighScore) {
-            globalHighScore = zk_output.end_globalHighScore;
-        }
+        bird_y_position = zk_output.end_bird_y_position;
+        pipe_x_position = zk_output.end_pipe_x_position;
+        highscore = zk_output.end_highscore;
+        playerHighScore[msg.sender] = zk_output.end_playerHighScore;
     }
 
-    // Developer-only function to manually set the game score for a user.
-    function DEV_ONLY_setGameScore(address user, uint64 _gameScore) external onlyOwner {
-        gameScores[user] = _gameScore;
-    }
-
-    // Developer-only function to manually set the player high score for a user.
-    function DEV_ONLY_setPlayerHighScore(address user, uint64 _playerHighScore) external onlyOwner {
-        playerHighScores[user] = _playerHighScore;
-    }
-
-    // Developer-only function to manually set the global high score.
-    function DEV_ONLY_setGlobalHighScore(uint64 _globalHighScore) external onlyOwner {
-        globalHighScore = _globalHighScore;
+    function DEV_ONLY_setStates(uint64 _bird_y_position, uint64 _pipe_x_position, uint64 _highscore, uint _playerHighscore) external onlyOwner {
+        bird_y_position = _bird_y_position;
+        pipe_x_position = _pipe_x_position;
+        highscore = _highscore;
+        playerHighScore[msg.sender] = _playerHighscore;
     }
 }
