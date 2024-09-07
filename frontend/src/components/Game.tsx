@@ -42,10 +42,6 @@ async function verify_onchain({
     instances: BigInt[];
     status: TaskStatus;
 }) {
-    console.log("proof", proof);
-    console.log("verify_instance", verify_instance);
-    console.log("aux",aux);
-
     const result = await writeContract(config, {
         abi,
         address: GAME_CONTRACT_ADDRESS,
@@ -58,7 +54,6 @@ async function verify_onchain({
     return transactionReceipt;
 }
 
-/* This function is used to get the on-chain game states */
 async function getOnchainGameStates() {
     const result = (await readContract(config, {
         abi,
@@ -70,8 +65,8 @@ async function getOnchainGameStates() {
 }
 
 export default function Game() {
-    const {isConnected} = useAccount();
-    const [highScore, setHighScore] = useState(0);  // Local state for highscore
+    const { isConnected } = useAccount();
+    const [highScore, setHighScore] = useState(0);
     const [gameState, setGameState] = useState<GameState>({
         x_position: BigInt(0),
         y_position: BigInt(0),
@@ -79,15 +74,8 @@ export default function Game() {
         player_highscore: BigInt(0)
     });
 
-    const [onChainGameStates, setOnChainGameStates] = useState<GameState>({
-        x_position: BigInt(0),
-        y_position: BigInt(0),
-        highscore: BigInt(0),
-        player_highscore: BigInt(0),
-    });
+    const [statusMessage, setStatusMessage] = useState(''); // New state for status messages
 
-    const [moves, setMoves] = useState<bigint[]>([]);
-    
     const dispatch = useDispatch();
     const { game } = useSelector((state: any) => state.game);
     const { bird } = useSelector((state: any) => state.bird);
@@ -96,12 +84,10 @@ export default function Game() {
     const hitRef = useRef(null);
     const pointRef = useRef(null);
 
-    // Function to fetch and update high score from the blockchain
     const fetchHighScoreFromBlockchain = async () => {
         const result = await getOnchainGameStates();
-        const blockchainHighScore = Number(result[2]);  // Blockchain highscore
+        const blockchainHighScore = Number(result[2]);
 
-        // Check if blockchain high score is higher than the local one and update
         if (blockchainHighScore > highScore) {
             setHighScore(blockchainHighScore);
             localStorage.setItem('highScore', blockchainHighScore.toString());
@@ -114,39 +100,30 @@ export default function Game() {
             return;
         }
 
-        // Fetch the highscore from localStorage if it exists
         const localHighScore = localStorage.getItem('highScore');
         if (localHighScore) {
-            setHighScore(Number(localHighScore));  // Load from localStorage
+            setHighScore(Number(localHighScore));
         }
 
-        // Fetch initial game states and setup spin
         getOnchainGameStates().then(async (result) => {
             const x_position = result[0];
             const y_position = result[1];
             const highscore = result[2];
             const player_highscore = result[3];
 
-            // Update local high score and localStorage if higher
             if (Number(highscore) > highScore) {
                 setHighScore(Number(highscore));
                 localStorage.setItem('highScore', highscore.toString());
             }
 
-            setOnChainGameStates({
-                x_position,
-                y_position,
-                highscore,
-                player_highscore,
-            });
-
+            setStatusMessage('Initializing Game...');
             spin = new Spin({
                 cloudCredentials: {
                     CLOUD_RPC_URL: ZK_CLOUD_RPC_URL,
                     USER_ADDRESS: ZK_USER_ADDRESS,
                     USER_PRIVATE_KEY: ZK_USER_PRIVATE_KEY,
                     IMAGE_HASH: ZK_IMAGE_MD5,
-                },  
+                },
             });
 
             spin.initialize_import().then(() => {
@@ -157,16 +134,16 @@ export default function Game() {
                     player_highscore
                 );
                 spin.initialize_game(arg);
+                setStatusMessage('Game Initialized');
                 updateDisplay();
             });
         });
 
-        // Poll the blockchain for high score updates every 30 seconds
         const intervalId = setInterval(() => {
             fetchHighScoreFromBlockchain();
-        }, 30000);  // 30 seconds interval
+        }, 30000);
 
-        return () => clearInterval(intervalId);  // Cleanup interval on component unmount
+        return () => clearInterval(intervalId);
     }, [isConnected]);
 
     const onClick = (command: bigint) => () => {
@@ -182,26 +159,30 @@ export default function Game() {
             highscore: newGameState.highscore,
             player_highscore: newGameState.player_highscore,
         });
-        setMoves(spin.witness);
     };
 
     const submitProof = async () => {
+        setStatusMessage('Generating Proof...');
         const proof = await spin.generateProof();
 
         if (!proof) {
-            console.error("Proof generation failed");
+            setStatusMessage('Proof generation failed');
             return;
         }
 
+        setStatusMessage('Submitting Proof...');
         try {
-            await verify_onchain(proof);
+            const verificationResult = await verify_onchain(proof);
+            setStatusMessage('Verifying On-chain...');
+            console.log("verificationResult = ", verificationResult);
+            setStatusMessage('Success! Proof verified on-chain');
         } catch (error) {
-            console.log("error in verify onchain function", error);
+            setStatusMessage('Error in on-chain verification');
+            console.error(error);
         }
 
-        // Fetch latest states after proof submission
         const gameStates = await getOnchainGameStates();
-        setOnChainGameStates({
+        setGameState({
             x_position: gameStates[0],
             y_position: gameStates[1],
             highscore: gameStates[2],
@@ -216,7 +197,7 @@ export default function Game() {
             dispatch(fall());
             dispatch(pipeRun());
         }, 150);
-        
+
         pipeGenerator = setInterval(() => {
             dispatch(generatePipe());
             dispatch(addScore());
@@ -246,11 +227,10 @@ export default function Game() {
         if (game.status === 'GAME_OVER') {
             stopGameLoop();
 
-            // If the player beats the high score, update both locally and on-chain
             if (game.score > highScore) {
-                setHighScore(game.score); // Update the displayed high score
-                localStorage.setItem('highScore', game.score.toString()); // Store new high score in localStorage
-                submitProof();  // Submit proof to update on-chain
+                setHighScore(game.score);
+                localStorage.setItem('highScore', game.score.toString());
+                submitProof();
             }
         } else {
             const x = startPosition.x;
@@ -291,34 +271,40 @@ export default function Game() {
     }, [startPosition.x]);
 
     return (
-        <div className='game-div' onClick={handleClick}>
-            <audio ref={hitRef} src="./hit.mp3"></audio>
-            <audio ref={pointRef} src="./point.mp3"></audio>
-            <h2 style={{ position: 'absolute', top: 4, left: 70 }}>
-                High Score: {highScore}
-            </h2> {/* Display high score */}
-            {game.status === 'NEW_GAME' && (
-                <>
-                    <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
-                    <Bird />
-                </>
-            )}
-            {game.status === 'GAME_OVER' && (
-                <>
-                    <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
-                    <h2 style={{ position: 'absolute', top: 100, left: 80 }}>Game Over</h2>  
-                    <h2 style={{ position: 'absolute', top: 150, left: 140 }}>{game.score}</h2>  
-                </>
-            )}
-            {game.status === 'PLAYING' && (
-                <>
-                    <audio ref={wingRef} src="./wing.mp3"></audio>
-                    <Bird />
-                    <Pipe />
-                    <ForeGround />
-                    <h2 style={{ position: 'absolute', top: 50, left: 150 }}>{game.score}</h2>  
-                </>
-            )}
+        <div>
+            <w3m-button></w3m-button>
+            <div className='status-message'>
+                {statusMessage && <h2>{statusMessage}</h2>}
+            </div>
+            <div className='game-div' onClick={handleClick}>
+                <audio ref={hitRef} src="./hit.mp3"></audio>
+                <audio ref={pointRef} src="./point.mp3"></audio>
+                <h2 style={{ position: 'absolute', top: 4, left: 70 }}>
+                    High Score: {highScore}
+                </h2>
+                {game.status === 'NEW_GAME' && (
+                    <>
+                        <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
+                        <Bird />
+                    </>
+                )}
+                {game.status === 'GAME_OVER' && (
+                    <>
+                        <img className='start-btn' src="./start-button.png" onClick={newGameHandler} alt="" />
+                        <h2 style={{ position: 'absolute', top: 100, left: 80 }}>Game Over</h2>  
+                        <h2 style={{ position: 'absolute', top: 150, left: 140 }}>{game.score}</h2>  
+                    </>
+                )}
+                {game.status === 'PLAYING' && (
+                    <>
+                        <audio ref={wingRef} src="./wing.mp3"></audio>
+                        <Bird />
+                        <Pipe />
+                        <ForeGround />
+                        <h2 style={{ position: 'absolute', top: 50, left: 150 }}>{game.score}</h2>  
+                    </>
+                )}
+            </div>
         </div>
     );
 }
