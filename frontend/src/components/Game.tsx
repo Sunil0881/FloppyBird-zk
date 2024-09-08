@@ -40,7 +40,6 @@ async function verify_onchain({
     verify_instance: BigInt[];
     aux: BigInt[];
     instances: BigInt[];
-    status: TaskStatus;
 }) {
     const result = await writeContract(config, {
         abi,
@@ -61,6 +60,17 @@ async function getOnchainGameStates() {
         functionName: "getStates",
         args: [],
     })) as [bigint, bigint, bigint, any];
+    return result;
+}
+
+async function updateHighScoreOnchain(newHighScore: bigint) {
+    // Assuming there is a contract function `updateHighScore` to set the high score on-chain
+    const result = await writeContract(config, {
+        abi,
+        address: GAME_CONTRACT_ADDRESS,
+        functionName: "updateHighScore",
+        args: [newHighScore],
+    });
     return result;
 }
 
@@ -89,8 +99,7 @@ export default function Game() {
         const blockchainHighScore = Number(result[2]);
 
         if (blockchainHighScore > highScore) {
-            setHighScore(blockchainHighScore);
-            localStorage.setItem('highScore', blockchainHighScore.toString());
+            setHighScore(blockchainHighScore); // Update high score from blockchain
         }
     };
 
@@ -100,11 +109,7 @@ export default function Game() {
             return;
         }
 
-        // const localHighScore = localStorage.getItem('highScore');
-        // if (localHighScore) {
-        //     setHighScore(Number(localHighScore));
-        // }
-
+        // Fetch initial high score and initialize the game
         getOnchainGameStates().then(async (result) => {
             const x_position = result[0];
             const y_position = result[1];
@@ -112,8 +117,7 @@ export default function Game() {
             const player_highscore = result[3];
 
             if (Number(highscore) > highScore) {
-                setHighScore(Number(highscore));
-                localStorage.setItem('highScore', highscore.toString());
+                setHighScore(Number(highscore)); // Get high score from blockchain
             }
 
             setStatusMessage('Initializing Game...');
@@ -228,9 +232,11 @@ export default function Game() {
             stopGameLoop();
 
             if (game.score > highScore) {
-                setHighScore(game.score);
-                localStorage.setItem('highScore', game.score.toString());
+                setHighScore(game.score); // Set new high score locally
                 submitProof();
+
+                // Update high score on blockchain if it's higher
+                updateHighScoreOnchain(BigInt(game.score));
             }
         } else {    
             const x = startPosition.x;
@@ -272,7 +278,9 @@ export default function Game() {
 
     return (
         <div>
-            <w3m-button></w3m-button>
+           <div className="centered-div">          
+  <w3m-button></w3m-button>
+</div>
             <div className='status-message'>
                 {statusMessage && <h2>{statusMessage}</h2>}
             </div>

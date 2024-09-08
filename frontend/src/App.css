@@ -92,3 +92,12 @@
 .start-btn {
   width: 150px;
 }
+
+
+.centered-div {
+  display: flex;
+  justify-content: center; /* Horizontal centering */
+  align-items: center;      /* Vertical centering */
+          /* Full height of the viewport */
+}
+
