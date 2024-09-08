@@ -100,10 +100,10 @@ export default function Game() {
             return;
         }
 
-        const localHighScore = localStorage.getItem('highScore');
-        if (localHighScore) {
-            setHighScore(Number(localHighScore));
-        }
+        // const localHighScore = localStorage.getItem('highScore');
+        // if (localHighScore) {
+        //     setHighScore(Number(localHighScore));
+        // }
 
         getOnchainGameStates().then(async (result) => {
             const x_position = result[0];
@@ -232,7 +232,7 @@ export default function Game() {
                 localStorage.setItem('highScore', game.score.toString());
                 submitProof();
             }
-        } else {
+        } else {    
             const x = startPosition.x;
 
             const challenge = pipes
