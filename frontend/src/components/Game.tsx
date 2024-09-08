@@ -233,7 +233,7 @@ export default function Game() {
 
             if (game.score > highScore) {
                 setHighScore(game.score); // Set new high score locally
-                submitProof();
+                
 
                 // Update high score on blockchain if it's higher
                 updateHighScoreOnchain(BigInt(game.score));
