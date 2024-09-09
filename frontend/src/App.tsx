@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Game from './components/Game';
 import IntroPage from './components/IntroPage';
 import "./App.css";

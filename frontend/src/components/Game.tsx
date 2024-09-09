@@ -207,7 +207,7 @@ export default function Game() {
         pipeGenerator = setInterval(() => {
             dispatch(generatePipe());
             dispatch(addScore());
-            pointRef.current.play();
+            pointRef.current?.play();
             onClick(BigInt(2));
         }, 3000);
     }
@@ -255,7 +255,7 @@ export default function Game() {
                 submitProof();
                 dispatch(birdReset());
                 dispatch(pipeReset());
-                hitRef.current.play();
+                hitRef.current?.play();
             }
 
             if (challenge.length) {
@@ -264,7 +264,7 @@ export default function Game() {
                     (x1 < 150 && 150 < x1 + 52 && bird.y < y1) ||
                     (x2 < 150 && 150 < x2 + 52 && bird.y > y2)
                 ) {
-                    hitRef.current.play();
+                    hitRef.current?.play();
                     dispatch(gameOver());
                     onClick(BigInt(0));
                     submitProof();
